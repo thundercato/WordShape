@@ -1,0 +1,17 @@
+PASS Start creates playable match and eight rack tiles
+PASS Tap placement and recall preserve all rack identities
+PASS Pass mode supports zero through eight keeps; cancellation costs no turn
+PASS Raised tile top-left aims, highlights and drops on expected cell
+PASS Pointer cancel, capture loss and outside drop preserve letters
+PASS Two-pointer zoom and fit restore scale without tile loss
+PASS Drag into keep tray selects letter separately from placement
+PASS HELP commits once, preserves EYE, clears unused seeds and computer takes one turn
+PASS Refreshing a pending computer turn resumes without double counting
+PASS Owned tiles, counters and rack restore through bundled UI
+PASS Keep-all completed pass preserves rack and takes one turn each
+PASS Invalid draft cannot change saved ownership or turns
+PASS Unavailable storage and malformed saves recover safely
+{
+  "passed": 13,
+  "environment": "LinkeDOM simulation, synthetic pointer coordinates; no browser layout or physical iPhone testing"
+}

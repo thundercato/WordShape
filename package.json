@@ -1,0 +1,13 @@
+{
+  "name": "word-ramble",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "dev": "vite dist",
+    "test": "node tests/engine-v2.test.cjs && node tests/ui-v2.test.cjs"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.13",
+    "vite": "^6.1.0"
+  }
+}

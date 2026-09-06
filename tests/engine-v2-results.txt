@@ -1,0 +1,37 @@
+PASS Smiley: vertical EYE words, mouth SMILE, black yellow artwork and blocked corners
+PASS User HELP example: first play keeps complete EYE and removes only unused seeds
+PASS THIS crosses mouth I and claims THIS plus SMILE exactly once
+PASS First move must reuse a seed letter in the main word, not mere side adjacency
+PASS Invalid opening cannot remove seeds or spend a turn
+PASS Captures include directly reused full words without recursive capture
+PASS Computer captures back the exact word chain directly reused, not indirectly touched words
+PASS Valid crossing constrained by two existing perpendicular words
+PASS Legal main word that creates an illegal perpendicular word is rejected
+PASS Duplicate-letter counts and single-letter full extensions
+PASS Overwrites, gaps, off-board tiles, decorative corners and nonlinear moves rejected
+PASS 50 generated boards have valid seed topology, colours and a connected playable silhouette
+PASS Timed-out search is never exhaustion, including expired computer turn
+PASS Pass keeps zero through eight exact tile identities and consumes precisely one turn
+PASS Impossible retained letters require explicit consent; retaining all is a valid pass
+PASS Difficulty recognises familiarity, not word length; repeated placements do not multiply recognition chances
+PASS Ten shots each including passes end in a tile-count winner or draw; no eleventh action
+PASS Exhausted board finishes gracefully without inventing a move
+PASS Committed ownership, racks, counters and pending computer seed/deadline restore exactly
+SIM smiley easy {"shots":{"player":10,"computer":10},"tiles":{"player":20,"computer":30,"neutral":0},"reason":"Ten turns each"}
+SIM smiley normal {"shots":{"player":10,"computer":10},"tiles":{"player":28,"computer":31,"neutral":0},"reason":"Ten turns each"}
+SIM smiley hard {"shots":{"player":10,"computer":10},"tiles":{"player":9,"computer":56,"neutral":0},"reason":"Ten turns each"}
+SIM hashtag easy {"shots":{"player":2,"computer":1},"tiles":{"player":11,"computer":0,"neutral":0},"reason":"No legal placements remain"}
+SIM hashtag normal {"shots":{"player":2,"computer":1},"tiles":{"player":11,"computer":0,"neutral":0},"reason":"No legal placements remain"}
+SIM hashtag hard {"shots":{"player":3,"computer":2},"tiles":{"player":15,"computer":6,"neutral":0},"reason":"No legal placements remain"}
+SIM random easy {"shots":{"player":10,"computer":10},"tiles":{"player":35,"computer":18,"neutral":0},"reason":"Ten turns each"}
+SIM random normal {"shots":{"player":10,"computer":10},"tiles":{"player":18,"computer":42,"neutral":0},"reason":"Ten turns each"}
+SIM random hard {"shots":{"player":10,"computer":10},"tiles":{"player":9,"computer":40,"neutral":0},"reason":"Ten turns each"}
+PASS Nine full matches across three board choices and every difficulty
+simulation: 12.216s
+{
+  "passed": 20,
+  "matches": 9,
+  "verifiedPlays": 126,
+  "passes": 5,
+  "earlyFinished": 3
+}
