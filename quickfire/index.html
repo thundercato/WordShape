@@ -8,15 +8,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Spot the word. Fill the gap. A quick-thinking word game from Letteramble.">
   <title>Letteramble · Quickfire</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=2">
+  <link rel="manifest" href="./manifest.webmanifest?v=3">
+  <link rel="icon" href="./icon.svg?v=3" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=3">
+  <link rel="stylesheet" href="./styles.css?v=3">
 </head>
 <body>
   <main class="game" id="game">
     <header class="header">
-      <div class="brand" aria-label="Letteramble"><span>Letter</span><span>amble</span><span class="brand-dot">.</span></div>
+      <div class="brand" aria-label="Letteramble"><span>Lette</span><span>ramble</span><span class="brand-dot">.</span></div>
       <div class="header-actions">
         <button class="icon-button" id="sound-button" aria-label="Mute sound" aria-pressed="false" title="Mute sound"></button>
         <button class="icon-button help-button" id="help-button" aria-label="How to play" title="How to play">?</button>
@@ -24,7 +24,7 @@
     </header>
     <section class="round-bar" aria-label="Round settings">
       <h1><span class="bolt" aria-hidden="true">ϟ</span> Quickfire</h1>
-      <span class="round-tag">15 GAPS · 16 LETTERS</span>
+      <span class="round-tag" id="shape-name">15 GAPS · 16 LETTERS</span>
     </section>
     <section class="scoreboard" aria-label="Game statistics">
       <div><span class="stat-label">SCORE</span><strong id="score">0</strong></div>
@@ -32,7 +32,8 @@
       <div class="countdown-stat" id="countdown-stat"><span class="stat-label" id="countdown-label">TIME LEFT</span><strong id="timer" role="timer" aria-label="30 seconds remaining">30<span class="seconds-unit">s</span></strong></div>
     </section>
     <div class="board-wrap" id="board-wrap">
-      <div class="board" id="board" role="grid" aria-label="Word search, 12 rows and 12 columns" aria-rowcount="12" aria-colcount="12"></div>
+      <div class="board" id="board" role="grid" aria-label="Word search, 15 rows and 15 columns" aria-rowcount="15" aria-colcount="15"></div>
+      <svg class="word-outlines" id="word-outlines" aria-hidden="true"></svg>
       <div class="board-overlay" id="board-overlay"><div class="overlay-inner"><span class="eyebrow">LETTERAMBLE</span><h2 id="overlay-title">Getting the letters ready…</h2><p id="overlay-copy">A little word spotting. A lot of quick thinking.</p><button class="primary-button" id="overlay-button" hidden>Retry</button></div></div>
 
     </div>
@@ -42,8 +43,11 @@
       <div class="rack-caption"><span>YOUR LETTERS</span><span id="gap-count">16 available</span></div>
       <div class="rack" id="rack"></div>
     </section>
-    <button class="pass-button" id="pass-button" disabled><span>PASS</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></button>
-    <footer class="score-key" aria-label="Scoring"><span><i class="green"></i>First <b>2</b></span><span><i class="amber"></i>Second <b>1</b></span><span><i class="red"></i>Shown <b>0</b></span><span><i class="gold"></i>Multi <b>5</b></span></footer>
+    <div class="game-controls">
+      <button class="pass-button" id="pass-button" disabled><span id="pass-label">PASS (3)</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></button>
+      <button class="hint-button" id="hint-button" disabled>Hint (3)</button>
+    </div>
+    <footer class="score-key" aria-label="Scoring"><span><i class="green"></i>First <b>2</b></span><span><i class="amber"></i>Second <b>1</b></span><span><i class="red"></i>Missed <b>0</b></span><span><i class="gold"></i>Multi <b>5</b></span></footer>
   </main>
   <dialog id="help-dialog" aria-labelledby="help-title">
     <div class="dialog-top"><span class="eyebrow">LETTERAMBLE · QUICKFIRE</span><button class="icon-button" id="close-help" aria-label="Close instructions">×</button></div>
@@ -51,11 +55,12 @@
     <p>Find a word through the sparkling <b>?</b>, then tap a letter from your rack. Look <b>left to right</b> and <b>top to bottom</b>. Words need at least <b>3 letters</b>.</p>
     <div class="help-example" aria-label="H A P question mark Y"><span>H</span><span>A</span><span>P</span><span class="example-gap">?</span><span>Y</span></div>
     <p>Every board has <b>15 solvable gaps</b> and <b>16 letters</b>, including the right quantities of repeated letters. Used letters fade out. There are no refills and no red herrings.</p>
-    <p>Can't spot it? Hit <b>PASS</b>. You can revisit the gap for one point. A <b>second pass or timeout</b> fills it for you: the square and its used rack letter turn red, with no points.</p>
-    <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> First opportunity</li><li><i class="amber"></i><b>1 point</b> After one miss</li><li><i class="red"></i><b>0 points</b> Shown after two misses</li><li><i class="gold"></i><b>5 points</b> Two or more words at once</li></ul>
-    <p>Multiple words count in <b>any direction</b>, including two overlapping words in the same row. Each word lights up separately, shortest first, with a rising chime. Five points is the total for that placement, even after one miss.</p>
-    <p>Wrong letters stay in your rack and move you along. They also count as a missed opportunity. Used tiles cannot be selected.</p>
-    <p>Your first gap allows <b>30 seconds</b>, decreasing to <b>15 seconds</b> for gap 15. A returning gap keeps its original allowance. Running out of time acts as a pass.</p>
+    <p>You have <b>three passes</b> and <b>three hints per board</b>. A pass brings the gap back later for fewer points. A hint sparkles around roughly 30% of your unused rack tiles, including a correct answer. It lasts until you move on.</p>
+    <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> First opportunity</li><li><i class="amber"></i><b>1 point</b> After one missed opportunity</li><li><i class="red"></i><b>0 points</b> After two misses, or time runs out</li><li><i class="gold"></i><b>5 points</b> Complete a crossing pair</li></ul>
+    <p>Words have crossword boundaries. Only the <b>whole word</b> counts: THERE does not also score THE, HER and ERE. Background letters are separate from the word layout. Completed words get an outline so you can see exactly where they begin and end.</p>
+    <p>A crossing must make valid words both ways. Each is shown separately with a bounce and a higher magical chime. A crossing earns five points total, even after a pass; a timed-out answer always earns zero.</p>
+    <p>Wrong letters stay in your rack and move you along. They count as a missed opportunity. Used tiles cannot be selected.</p>
+    <p>Your first gap allows <b>30 seconds</b>, decreasing to <b>15 seconds</b> for gap 15. A returning gap keeps its original allowance. <b>Time runs out: that gap is lost immediately.</b> We reveal its word in a dark colour and consume the answer tile for no points. Timeouts do not spend a pass.</p>
     <p>The final score adds a <b>speed bonus</b> based on your overall active playing time: one point for every 15 seconds saved against the board’s total time allowance, capped at the number of gaps you solved yourself. Reveals, these instructions and time away from the game do not count.</p>
     <p>Unexpected dictionary words still count when they leave a solution for the remaining gaps. If a valid letter would leave another gap impossible, it stays in your rack with an explanation and no penalty.</p>
     <p class="help-small">Keyboard: A–Z to play, Space to pass. On iPhone, Safari’s Share menu → Add to Home Screen gives the board more room.</p>
@@ -63,6 +68,6 @@
     <button class="primary-button" id="play-button">Let's play</button>
   </dialog>
   <noscript>This game needs JavaScript enabled to play.</noscript>
-  <script type="module" src="./app.mjs?v=2"></script>
+  <script type="module" src="./app.mjs?v=3"></script>
 </body>
 </html>

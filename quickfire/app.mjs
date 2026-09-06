@@ -1,7 +1,9 @@
-import {createRound,act,finishRound,SIZE,RACK_SIZE} from './engine.mjs?v=2';
-import {RoundClock} from './clock.mjs?v=2';
+import {createRound,act,finishRound,SIZE,RACK_SIZE} from './engine.mjs?v=3';
+import {RoundClock} from './clock.mjs?v=3';
+import {CountdownCues,sparkDuration,vibrate} from './feedback.mjs?v=3';
+const cues=new CountdownCues();
 const $=id=>document.getElementById(id);
-const board=$('board'),rack=$('rack'),pass=$('pass-button'),help=$('help-dialog'),feedback=$('feedback');
+const board=$('board'),rack=$('rack'),pass=$('pass-button'),hint=$('hint-button'),help=$('help-dialog'),feedback=$('feedback');
 const overlay=$('board-overlay'),overlayTitle=$('overlay-title'),overlayCopy=$('overlay-copy'),overlayButton=$('overlay-button');
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let dictionary,state,locked=true,started=false,generation=0,transitioning=false;
@@ -23,6 +25,7 @@ function sound(kind,step=0,automatic=false){
   }
   if(kind==='correct'){const base=(automatic?392:659)*Math.pow(2,Math.min(step,8)*2/12);note(base,0,.25,'sine',.10);note(base*1.5,.085,.4,'sine',.09);note(base*2,.13,.5,'sine',.035);}
   if(kind==='gold'){[659,831,988,1318].forEach((f,i)=>note(f,i*.07,.32,'sine',.10));}
+  if(kind==='warning')note(880,0,.07,'sine',.025);
   if(kind==='wrong'){note(247,0,.15,'triangle',.13);note(165,.14,.22,'triangle',.13);}
   if(kind==='new'){[392,523,659].forEach((f,i)=>note(f,i*.055,.2,'sine',.06));}
   if(kind==='pass'){
@@ -32,10 +35,24 @@ function sound(kind,step=0,automatic=false){
   }
 }
 function say(text,kind=''){feedback.textContent=text;feedback.className=`feedback ${kind}`;}
-function setLocked(value){locked=value;const disabled=value||help.open||!state||state.ended||!started;pass.disabled=disabled;rackButtons.forEach((b,slot)=>b.disabled=disabled||!!state?.rackUsed[slot]);}
+function setLocked(value){
+  locked=value;const disabled=value||help.open||!state||state.ended||!started;
+  pass.disabled=disabled||state.passesLeft<=0;
+  hint.disabled=disabled||state.hintsLeft<=0||state.hintGap===state.active;
+  rackButtons.forEach((b,slot)=>b.disabled=disabled||!!state?.rackUsed[slot]);
+}
 function updateTimer(){
   const seconds=Math.ceil(clock.remainingMs/1000),allowance=state?.gaps[state.active]?.allowance||30;
   $('timer').innerHTML=`${seconds}<span class="seconds-unit">s</span>`;$('timer').setAttribute('aria-label',`${seconds} seconds remaining`);
+  const duration=sparkDuration(clock.remainingMs,allowance);
+  $('game').style.setProperty('--spark-speed',`${duration}s`);
+  // Change playback rate without jumping the orbit's current position.
+  for(const element of [tiles[state?.active],...rackButtons.filter((_,i)=>state?.hintSlots.includes(i))]){
+    if(!element?.getAnimations)continue;
+    for(const animation of element.getAnimations())if(animation.animationName==='sparkle-orbit'&&animation.updatePlaybackRate){
+      element.style.setProperty('--spark-speed','1.7s');animation.updatePlaybackRate(1.7/duration);
+    }
+  }
   $('timer-fill').style.transform=`scaleX(${Math.max(0,clock.remainingMs/(allowance*1000))})`;
   $('countdown-stat').classList.toggle('urgent',started&&!state?.ended&&seconds<=5);
   const paused=started&&!state?.ended&&(help.open||document.hidden);
@@ -43,18 +60,25 @@ function updateTimer(){
 }
 function resumeTurn(fresh=true){
   setLocked(false);
-  if(fresh){clock.begin(state.gaps[state.active].allowance,performance.now());}
+  if(fresh){cues.reset();clock.begin(state.gaps[state.active].allowance,performance.now());}
   else clock.resume(performance.now());
   if(help.open||document.hidden)clock.pause(performance.now());
   updateTimer();
 }
 function buildBoard(){
   board.replaceChildren();tiles=[];board.className='board';
+  board.style.setProperty('--grid-size',SIZE);
+  board.setAttribute('aria-rowcount',SIZE);board.setAttribute('aria-colcount',SIZE);
+  board.setAttribute('aria-label',`${state.shape} word board, ${SIZE} rows and columns`);
+  document.body.dataset.theme=state.theme;
+  document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.body).getPropertyValue('--surface').trim();
+  $('shape-name').textContent=`${state.shape.length===1?'LETTER ':''}${state.shape.toUpperCase()} · BOARD ${state.round}`;
+  $('word-outlines').setAttribute('viewBox',`0 0 ${SIZE} ${SIZE}`);
   for(let r=0;r<SIZE;r++){
     const row=document.createElement('div');row.className='board-row';row.setAttribute('role','row');row.setAttribute('aria-rowindex',r+1);
     for(let c=0;c<SIZE;c++){
       const index=r*SIZE+c,tile=document.createElement('div');tile.className='tile';tile.setAttribute('role','gridcell');tile.setAttribute('aria-colindex',c+1);
-      tile.style.setProperty('--delay',`${r*24+Math.random()*95}ms`);tile.style.setProperty('--tx',`${(c-5.5)*30}px`);tile.style.setProperty('--ty',`${(r-5.5)*30-45}px`);tile.style.setProperty('--rot',`${(Math.random()-.5)*140}deg`);tile.style.setProperty('--explode-delay',`${Math.random()*80}ms`);
+      tile.style.setProperty('--delay',`${r*24+Math.random()*95}ms`);tile.style.setProperty('--tx',`${(c-(SIZE-1)/2)*30}px`);tile.style.setProperty('--ty',`${(r-(SIZE-1)/2)*30-45}px`);tile.style.setProperty('--rot',`${(Math.random()-.5)*140}deg`);tile.style.setProperty('--explode-delay',`${Math.random()*80}ms`);
       row.append(tile);tiles.push(tile);
     }
     board.append(row);
@@ -67,31 +91,43 @@ function buildRack(){
   }
 }
 function render({drop=false}={}){
-  const found=new Set(state.found.flatMap(w=>w.cells));
+  const found=new Set(state.found.flatMap(w=>w.cells)),lost=new Set(state.found.filter(w=>w.automatic).flatMap(w=>w.cells));
   for(let i=0;i<tiles.length;i++){
     const tile=tiles[i],letter=state.board[i],gap=state.gaps[i],active=i===state.active&&!state.ended;
+    if(!state.mask[i]){tile.className='tile void';tile.textContent='';tile.setAttribute('aria-label','Outside the board');continue;}
     let className='tile';
-    if(letter===null)className+=' gap';if(found.has(i))className+=' found';
+    if(letter===null)className+=' gap';if(found.has(i))className+=' found';if(lost.has(i))className+=' lost';
     if(gap?.reward)className+=` reward ${gap.reward}`;
-    else if(letter===null&&gap?.shownMisses)className+=' amber';
+    else if(letter===null&&gap?.shownMisses)className+=gap.shownMisses===1?' amber':' red';
     if(active)className+=' active';if(drop)className+=' bounce';
     tile.className=className;tile.textContent=letter??'?';
     if(active)tile.setAttribute('aria-current','true');else tile.removeAttribute('aria-current');
-    const status=gap?.reward?`, solved ${gap.reward}`:letter===null&&gap?.shownMisses?', 1 point available':'';
+    const status=gap?.reward?`, solved ${gap.reward}`:letter===null&&gap?.shownMisses?`, ${gap.shownMisses===1?1:0} points available`:'';
     tile.setAttribute('aria-label',`${letter??'Gap'}, row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}${active?', active':''}${status}`);
   }
   rackButtons.forEach((b,i)=>{
-    const used=state.rackUsed[i];b.textContent=state.rack[i];b.className=`rack-tile${used?' consumed':''}${used==='automatic'?' automatic':''}`;
+    const used=state.rackUsed[i];b.textContent=state.rack[i];b.className=`rack-tile${used?' consumed':''}${used==='automatic'?' automatic':''}${state.hintSlots.includes(i)?' hinted':''}`;
     b.setAttribute('aria-label',`${state.rack[i]}${used==='automatic'?', used automatically, no points':used?', already used':', place letter'}`);
   });
+  drawOutlines();
+  $('pass-label').textContent=`PASS (${state.passesLeft})`;hint.textContent=`Hint (${state.hintsLeft})`;
   $('score').textContent=state.score;$('filled-count').textContent=state.filled;
   $('gap-count').textContent=`${RACK_SIZE-state.filled} available`;
   setLocked(locked);
 }
+function drawOutlines(){
+  const layer=$('word-outlines');layer.replaceChildren();
+  for(const word of state.found){
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect'),first=word.cells[0],across=word.direction==='across';
+    rect.setAttribute('x',first%SIZE+.02);rect.setAttribute('y',Math.floor(first/SIZE)+.02);
+    rect.setAttribute('width',across?word.cells.length-.04:.96);rect.setAttribute('height',across?.96:word.cells.length-.04);rect.setAttribute('rx','.17');
+    rect.setAttribute('class',word.automatic?'outline lost-outline':'outline');layer.append(rect);
+  }
+}
 function overlayMessage(title,copy,buttonText=null,callback=null){overlay.hidden=false;overlay.classList.remove('results-view');overlayTitle.textContent=title;overlayCopy.textContent=copy;overlayButton.hidden=!buttonText;overlayButton.textContent=buttonText||'';overlayButton.onclick=callback;}
 async function revealWords(event,token){
   const automatic=event.kind==='automatic',multiple=event.words.length>1;
-  board.classList.add('revealing');if(state.active!==null)tiles[state.active].classList.remove('active');
+  board.classList.add('revealing');$('word-outlines').classList.add('hidden-outlines');if(state.active!==null)tiles[state.active].classList.remove('active');
   for(let step=0;step<event.words.length;step++){
     if(token!==generation)return;
     const word=event.words[step];
@@ -105,7 +141,7 @@ async function revealWords(event,token){
     feedback.append(name,caption);sound('correct',step,automatic);
     await wait(multiple?800:620);
   }
-  board.classList.remove('revealing');tiles.forEach(t=>t.classList.remove('word-focus','word-pop','focus-gold','focus-red','focus-green'));
+  board.classList.remove('revealing');$('word-outlines').classList.remove('hidden-outlines');tiles.forEach(t=>t.classList.remove('word-focus','word-pop','focus-gold','focus-red','focus-green'));
   render();
   const names=[...new Set(event.words.map(w=>w.word))];
   say(automatic?`${names.join(' + ')} · Shown for you · 0 points`:`${names.join(' + ')} · ${multiple?'Multi-word! ':''}+${event.points}`,automatic?'error':multiple?'double':'success');
@@ -121,10 +157,10 @@ async function newRound({first=false}={}){
   overlayMessage('Shuffling the letters…','Every gap has an answer in your rack.');
   try{
     await new Promise(resolve=>requestAnimationFrame(resolve));
-    state=createRound({dictionary,score:state?.score||0,totalWords:state?.totalWords||0,round:first?1:(state?.round||0)+1});
+    state=createRound({dictionary,score:state?.score||0,totalWords:state?.totalWords||0,round:first?1:(state?.round||0)+1,previousShape:state?.shape,previousTheme:state?.theme});
     if(token!==generation)return;
     buildBoard();render();clock.remainingMs=30000;updateTimer();say('Find a word through the sparkling ?');
-    if(first)overlayMessage('Ready for Quickfire?','15 gaps. 16 letters. Every answer is there.','Start board',()=>startPreparedRound(token));
+    if(first)overlayMessage('Ready for Quickfire?','15 gaps. 16 letters. Three hints. Three passes.','Start board',()=>startPreparedRound(token));
     else await startPreparedRound(token);
   }catch(error){console.error(error);overlayMessage('Those letters got tangled.','Let’s shuffle another board.','Try again',()=>newRound({first}));}
 }
@@ -153,17 +189,18 @@ async function handle(action){
   let event;
   try{event=act(state,action,dictionary);}catch(error){console.error(error);overlayMessage('Something interrupted this board.','Try a fresh set of letters.','New board',()=>newRound());return;}
   if(event.kind==='ignored'){resumeTurn(false);return;}
+  if(event.kind==='hint'){render();say(`${event.slots.length} sparkling choices. One will fit.`);resumeTurn(false);return;}
   if(event.kind==='reserved'){
     say(`${event.words[0].word} fits, but ${event.letter} is needed elsewhere. No penalty.`);
     sound('pass');await wait(350);if(token===generation)resumeTurn(false);return;
   }
   if(event.kind==='wrong'){
-    sound('wrong');tiles[event.index].classList.add('wobble');rackButtons[event.slot].classList.add('wobble');say('Not a word this time. One chance left when it returns.','error');
+    vibrate(navigator,130);sound('wrong');tiles[event.index].classList.add('wobble');rackButtons[event.slot].classList.add('wobble');say('Not a complete word. Your letter stays; the gap will return.','error');
     await wait(reduced?100:300);if(token!==generation)return;render();
-  }else if(event.kind==='pass'||event.kind==='timeout'){
-    sound('pass');render();say(event.kind==='timeout'?'Time’s up. You can revisit that gap.':'Passed. One chance left when it returns.');await wait(100);
+  }else if(event.kind==='pass'){
+    vibrate(navigator,160);sound('pass');render();say(`Passed. The gap will return. ${state.passesLeft} passes left.`);await wait(100);
   }else{
-    if(event.kind==='automatic')sound('wrong');render();await revealWords(event,token);
+    if(event.kind==='automatic'){vibrate(navigator,220);sound('wrong');}else vibrate(navigator,[35,45,70]);render();await revealWords(event,token);
   }
   if(token!==generation)return;
   if(state.ended)completeRound(token);else resumeTurn();
@@ -179,8 +216,9 @@ async function load(){
   }catch(error){console.error(error);overlayMessage('The dictionary hasn’t arrived.','Check your connection, then try again.','Retry',load);}finally{clearTimeout(timeout);}
 }
 pass.addEventListener('click',()=>handle({type:'pass'}));
+hint.addEventListener('click',()=>handle({type:'hint'}));
 $('sound-button').addEventListener('click',()=>{muted=!muted;try{localStorage.setItem('letteramble-quickfire-muted',String(muted));}catch{}soundButton();if(!muted){unlockAudio();setTimeout(()=>sound('correct'),70);}});
-$('help-button').addEventListener('click',()=>{pendingTimeout=clock.pause(performance.now())||pendingTimeout;help.showModal();$('game').classList.add('paused');setLocked(locked);updateTimer();});
+$('help-button').addEventListener('click',()=>{pendingTimeout=clock.pause(performance.now())||pendingTimeout;vibrate(navigator,0);help.showModal();$('game').classList.add('paused');setLocked(locked);updateTimer();});
 const closeHelp=()=>help.close();$('close-help').addEventListener('click',closeHelp);$('play-button').addEventListener('click',closeHelp);
 function resumeVisible(){
   updateTimer();setLocked(locked);
@@ -198,9 +236,11 @@ document.addEventListener('keydown',e=>{
   }else if(/^[a-z]$/i.test(e.key)&&state){const slot=state.rack.findIndex((letter,i)=>letter===e.key.toUpperCase()&&!state.rackUsed[i]);if(slot!==-1){e.preventDefault();handle({type:'letter',slot});}}
 });
 document.addEventListener('pointerdown',unlockAudio,{passive:true});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)pendingTimeout=clock.pause(performance.now())||pendingTimeout;else resumeVisible();updateTimer();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){vibrate(navigator,0);pendingTimeout=clock.pause(performance.now())||pendingTimeout;}else resumeVisible();updateTimer();});
 setInterval(()=>{
   if(!clock.running||help.open||document.hidden)return;
-  const expired=clock.tick(performance.now());updateTimer();if(expired)handle({type:'timeout'});
+  const expired=clock.tick(performance.now());updateTimer();
+  if(!expired&&cues.sample(clock.remainingMs)){vibrate(navigator,30);sound('warning');}
+  if(expired)handle({type:'timeout'});
 },50);
 soundButton();buildRack();load();
