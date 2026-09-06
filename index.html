@@ -355,7 +355,7 @@ function tileTap(i,from='rack'){if(!canPlay())return;if(passMode){if(keeps.has(i
 function boardTap(r,c){if(!canPlay()||passMode)return;if(selected!==null){place(selected,r,c);return;}const entry=[...draft].find(([,p])=>p.r===r&&p.c===c);if(entry){selected=entry[0];render();}}
 // All tile identities stay on the rack until a legal commit. Gestures only edit
 // the provisional map on release; cancellations never remove or duplicate tiles.
-function clearAim(){document.querySelectorAll('.target').forEach(e=>e.classList.remove('target'));$('passBox').classList.remove('target-tray');}
+function clearAim(keep=null){document.querySelectorAll('.target').forEach(e=>{if(e!==keep)e.classList.remove('target');});$('passBox').classList.remove('target-tray');}
 function clearGesture(){const old=gesture;gesture=null;if(old){try{old.capture.releasePointerCapture(old.id);}catch{}}$('ghost').hidden=true;document.body.classList.remove('dragging');clearAim();if(raf!==null){cancelAnimationFrame(raf);raf=null;}}
 function clearPointers(){clearGesture();pointers.clear();pinch=null;}
 function aimPoint(g){return {x:g.x-44,y:g.y-76};}
@@ -363,9 +363,9 @@ function destination(x,y){
  const view=$('viewport').getBoundingClientRect(),b=$('board').getBoundingClientRect();if(x<view.left||x>view.right||y<view.top||y>view.bottom)return null;
  const xx=(x-b.left)/zoom-4,yy=(y-b.top)/zoom-4,c=Math.floor(xx/43),r=Math.floor(yy/43);if(xx<0||yy<0||xx%43>40||yy%43>40)return null;const sq=W.cell(state.board,r,c);return sq?.playable&&!sq.letter?{r,c}:null;
 }
-function showAim(){if(!gesture?.moved||gesture.kind!=='tile')return;const g=gesture,a=aimPoint(g);$('ghost').hidden=false;$('ghost').style.left=a.x+'px';$('ghost').style.top=a.y+'px';$('ghostLetter').textContent=state.racks.player[g.i];document.body.classList.add('dragging');clearAim();
- if(passMode){const box=$('passBox').getBoundingClientRect();if(a.x>=box.left&&a.x<=box.right&&a.y>=box.top&&a.y<=box.bottom)$('passBox').classList.add('target-tray');}
- else {const d=destination(a.x,a.y);if(d)$('board').querySelector('[data-r="'+d.r+'"][data-c="'+d.c+'"]').classList.add('target');}
+function showAim(){if(!gesture?.moved||gesture.kind!=='tile')return;const g=gesture,a=aimPoint(g);$('ghost').hidden=false;$('ghost').style.left=a.x+'px';$('ghost').style.top=a.y+'px';$('ghostLetter').textContent=state.racks.player[g.i];document.body.classList.add('dragging');
+ if(passMode){clearAim();const box=$('passBox').getBoundingClientRect();if(a.x>=box.left&&a.x<=box.right&&a.y>=box.top&&a.y<=box.bottom)$('passBox').classList.add('target-tray');}
+ else {const d=destination(a.x,a.y),el=d?$('board').querySelector('[data-r="'+d.r+'"][data-c="'+d.c+'"]'):null;clearAim(el);if(el)el.classList.add('target');}
 }
 function autoScroll(){raf=null;if(!gesture?.moved||gesture.kind!=='tile'||passMode)return;const a=aimPoint(gesture),v=$('viewport'),r=v.getBoundingClientRect();if(a.x>=r.left-15&&a.x<=r.right+15&&a.y>=r.top-15&&a.y<=r.bottom+15){if(a.x<r.left+25)v.scrollLeft-=5;if(a.x>r.right-25)v.scrollLeft+=5;if(a.y<r.top+25)v.scrollTop-=5;if(a.y>r.bottom-25)v.scrollTop+=5;showAim();}raf=requestAnimationFrame(autoScroll);}
 function startPointer(e){
