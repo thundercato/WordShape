@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f5fc">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Spot the word. Fill the gap. A quick-thinking word game from Letteramble.">
+  <title>Letteramble · Quickfire</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="game" id="game">
+    <header class="header">
+      <div class="brand" aria-label="Letteramble"><span>Letter</span><span>amble</span><span class="brand-dot">.</span></div>
+      <div class="header-actions">
+        <button class="icon-button" id="sound-button" aria-label="Mute sound" aria-pressed="false" title="Mute sound"></button>
+        <button class="icon-button help-button" id="help-button" aria-label="How to play" title="How to play">?</button>
+      </div>
+    </header>
+    <section class="round-bar" aria-label="Round settings">
+      <h1><span class="bolt" aria-hidden="true">ϟ</span> Quickfire</h1>
+      <div class="density" role="group" aria-label="Planted words per board">
+        <button data-density="10" aria-pressed="true">10</button>
+        <button data-density="15" aria-pressed="false">15</button>
+        <button data-density="20" aria-pressed="false">20</button>
+      </div>
+    </section>
+    <section class="scoreboard" aria-label="Game statistics">
+      <div><span class="stat-label">SCORE</span><strong id="score">0</strong></div>
+      <div><span class="stat-label">WORDS</span><strong id="word-count">0</strong></div>
+      <div><span class="stat-label">BOARD <span id="board-number">01</span></span><strong id="timer">0:00</strong></div>
+    </section>
+    <div class="board-wrap" id="board-wrap">
+      <div class="board" id="board" role="grid" aria-label="Word search, 12 rows and 12 columns" aria-rowcount="12" aria-colcount="12"></div>
+      <div class="board-overlay" id="board-overlay"><div class="overlay-inner"><span class="eyebrow">LETTERAMBLE</span><h2 id="overlay-title">Getting the letters ready…</h2><p id="overlay-copy">A little word spotting. A lot of quick thinking.</p><button class="primary-button" id="overlay-button" hidden>Retry</button></div></div>
+      <div class="celebration" id="celebration" aria-hidden="true"></div>
+    </div>
+    <div class="feedback" id="feedback" role="status" aria-live="polite">Find a word through the sparkling ?</div>
+    <section class="rack-section" aria-label="Your letters">
+      <div class="rack-caption"><span>YOUR LETTERS</span><span id="gap-count">12 to choose from</span></div>
+      <div class="rack" id="rack"></div>
+    </section>
+    <button class="pass-button" id="pass-button" disabled><span>PASS</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></button>
+    <footer class="score-key" aria-label="Scoring"><span><i class="green"></i>First <b>2</b></span><span><i class="amber"></i>Second <b>1</b></span><span><i class="red"></i>Later <b>0</b></span><span><i class="gold"></i>Double <b>5</b></span></footer>
+  </main>
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <div class="dialog-top"><span class="eyebrow">LETTERAMBLE · QUICKFIRE</span><button class="icon-button" id="close-help" aria-label="Close instructions">×</button></div>
+    <h2 id="help-title">Spot it. Fill it. Keep going.</h2>
+    <p>Find a word through the sparkling <b>?</b>, then tap a letter from your rack. Look <b>left to right</b> and <b>top to bottom</b>. Words need at least <b>3 letters</b>.</p>
+    <div class="help-example" aria-label="H A P question mark Y"><span>H</span><span>A</span><span>P</span><span class="example-gap">?</span><span>Y</span></div>
+    <p>Can't fill it? Hit <b>PASS</b>. The square will come round again. Passing only costs points when you already have a letter that works.</p>
+    <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> No missed opportunity</li><li><i class="amber"></i><b>1 point</b> One missed opportunity</li><li><i class="red"></i><b>0 points</b> Two or more misses</li><li><i class="gold"></i><b>5 points</b> Words in both directions</li></ul>
+    <p>Every correct answer gives you a fresh letter, even a red one. Wrong letters stay in your rack and move you along. They count as a miss only if you had a valid answer.</p>
+    <p>Words can grow: <b>W?LK?NG → WALK?NG → WALKING</b>. Each letter must make a complete word. Any dictionary word counts, including surprises.</p>
+    <p>The board refreshes when no gaps can be filled from your rack. The clock counts up, so take your time or go quickfire.</p>
+    <p class="help-small">10 / 15 / 20 sets the number of planted words. Extra words can happen. Keyboard: A–Z to play, Space to pass. On iPhone, use Safari’s Share menu → Add to Home Screen.</p>
+    <a class="credits-link" href="./dictionary-info.html" target="_blank" rel="noopener">Dictionary and credits</a>
+    <button class="primary-button" id="play-button">Let's play</button>
+  </dialog>
+  <noscript>This game needs JavaScript enabled to play.</noscript>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
