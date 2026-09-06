@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=2">
 </head>
 <body>
   <main class="game" id="game">
@@ -24,45 +24,45 @@
     </header>
     <section class="round-bar" aria-label="Round settings">
       <h1><span class="bolt" aria-hidden="true">ϟ</span> Quickfire</h1>
-      <div class="density" role="group" aria-label="Planted words per board">
-        <button data-density="10" aria-pressed="true">10</button>
-        <button data-density="15" aria-pressed="false">15</button>
-        <button data-density="20" aria-pressed="false">20</button>
-      </div>
+      <span class="round-tag">15 GAPS · 16 LETTERS</span>
     </section>
     <section class="scoreboard" aria-label="Game statistics">
       <div><span class="stat-label">SCORE</span><strong id="score">0</strong></div>
-      <div><span class="stat-label">WORDS</span><strong id="word-count">0</strong></div>
-      <div><span class="stat-label">BOARD <span id="board-number">01</span></span><strong id="timer">0:00</strong></div>
+      <div><span class="stat-label">FILLED</span><strong><span id="filled-count">0</span><small> / 15</small></strong></div>
+      <div class="countdown-stat" id="countdown-stat"><span class="stat-label" id="countdown-label">TIME LEFT</span><strong id="timer" role="timer" aria-label="30 seconds remaining">30<span class="seconds-unit">s</span></strong></div>
     </section>
     <div class="board-wrap" id="board-wrap">
       <div class="board" id="board" role="grid" aria-label="Word search, 12 rows and 12 columns" aria-rowcount="12" aria-colcount="12"></div>
       <div class="board-overlay" id="board-overlay"><div class="overlay-inner"><span class="eyebrow">LETTERAMBLE</span><h2 id="overlay-title">Getting the letters ready…</h2><p id="overlay-copy">A little word spotting. A lot of quick thinking.</p><button class="primary-button" id="overlay-button" hidden>Retry</button></div></div>
-      <div class="celebration" id="celebration" aria-hidden="true"></div>
+
     </div>
+    <div class="timer-track" aria-hidden="true"><span id="timer-fill"></span></div>
     <div class="feedback" id="feedback" role="status" aria-live="polite">Find a word through the sparkling ?</div>
     <section class="rack-section" aria-label="Your letters">
-      <div class="rack-caption"><span>YOUR LETTERS</span><span id="gap-count">12 to choose from</span></div>
+      <div class="rack-caption"><span>YOUR LETTERS</span><span id="gap-count">16 available</span></div>
       <div class="rack" id="rack"></div>
     </section>
     <button class="pass-button" id="pass-button" disabled><span>PASS</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 5l7 7-7 7"/></svg></button>
-    <footer class="score-key" aria-label="Scoring"><span><i class="green"></i>First <b>2</b></span><span><i class="amber"></i>Second <b>1</b></span><span><i class="red"></i>Later <b>0</b></span><span><i class="gold"></i>Double <b>5</b></span></footer>
+    <footer class="score-key" aria-label="Scoring"><span><i class="green"></i>First <b>2</b></span><span><i class="amber"></i>Second <b>1</b></span><span><i class="red"></i>Shown <b>0</b></span><span><i class="gold"></i>Multi <b>5</b></span></footer>
   </main>
   <dialog id="help-dialog" aria-labelledby="help-title">
     <div class="dialog-top"><span class="eyebrow">LETTERAMBLE · QUICKFIRE</span><button class="icon-button" id="close-help" aria-label="Close instructions">×</button></div>
     <h2 id="help-title">Spot it. Fill it. Keep going.</h2>
     <p>Find a word through the sparkling <b>?</b>, then tap a letter from your rack. Look <b>left to right</b> and <b>top to bottom</b>. Words need at least <b>3 letters</b>.</p>
     <div class="help-example" aria-label="H A P question mark Y"><span>H</span><span>A</span><span>P</span><span class="example-gap">?</span><span>Y</span></div>
-    <p>Can't fill it? Hit <b>PASS</b>. The square will come round again. Passing only costs points when you already have a letter that works.</p>
-    <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> No missed opportunity</li><li><i class="amber"></i><b>1 point</b> One missed opportunity</li><li><i class="red"></i><b>0 points</b> Two or more misses</li><li><i class="gold"></i><b>5 points</b> Words in both directions</li></ul>
-    <p>Every correct answer gives you a fresh letter, even a red one. Wrong letters stay in your rack and move you along. They count as a miss only if you had a valid answer.</p>
-    <p>Words can grow: <b>W?LK?NG → WALK?NG → WALKING</b>. Each letter must make a complete word. Any dictionary word counts, including surprises.</p>
-    <p>The board refreshes when no gaps can be filled from your rack. The clock counts up, so take your time or go quickfire.</p>
-    <p class="help-small">10 / 15 / 20 sets the number of planted words. Extra words can happen. Keyboard: A–Z to play, Space to pass. On iPhone, use Safari’s Share menu → Add to Home Screen.</p>
+    <p>Every board has <b>15 solvable gaps</b> and <b>16 letters</b>, including the right quantities of repeated letters. Used letters fade out. There are no refills and no red herrings.</p>
+    <p>Can't spot it? Hit <b>PASS</b>. You can revisit the gap for one point. A <b>second pass or timeout</b> fills it for you: the square and its used rack letter turn red, with no points.</p>
+    <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> First opportunity</li><li><i class="amber"></i><b>1 point</b> After one miss</li><li><i class="red"></i><b>0 points</b> Shown after two misses</li><li><i class="gold"></i><b>5 points</b> Two or more words at once</li></ul>
+    <p>Multiple words count in <b>any direction</b>, including two overlapping words in the same row. Each word lights up separately, shortest first, with a rising chime. Five points is the total for that placement, even after one miss.</p>
+    <p>Wrong letters stay in your rack and move you along. They also count as a missed opportunity. Used tiles cannot be selected.</p>
+    <p>Your first gap allows <b>30 seconds</b>, decreasing to <b>15 seconds</b> for gap 15. A returning gap keeps its original allowance. Running out of time acts as a pass.</p>
+    <p>The final score adds a <b>speed bonus</b> based on your overall active playing time: one point for every 15 seconds saved against the board’s total time allowance, capped at the number of gaps you solved yourself. Reveals, these instructions and time away from the game do not count.</p>
+    <p>Unexpected dictionary words still count when they leave a solution for the remaining gaps. If a valid letter would leave another gap impossible, it stays in your rack with an explanation and no penalty.</p>
+    <p class="help-small">Keyboard: A–Z to play, Space to pass. On iPhone, Safari’s Share menu → Add to Home Screen gives the board more room.</p>
     <a class="credits-link" href="./dictionary-info.html" target="_blank" rel="noopener">Dictionary and credits</a>
     <button class="primary-button" id="play-button">Let's play</button>
   </dialog>
   <noscript>This game needs JavaScript enabled to play.</noscript>
-  <script type="module" src="./app.mjs"></script>
+  <script type="module" src="./app.mjs?v=2"></script>
 </body>
 </html>

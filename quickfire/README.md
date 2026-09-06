@@ -1,30 +1,34 @@
 # Letteramble: Quickfire
 
-A browser word-search mini-game for Letteramble, designed around a 12 × 12 board, a 12-letter rack and a large PASS button. No runtime dependencies, adverts, analytics or paid services.
+A browser word-search mini-game for Letteramble: a 12 × 12 board, exactly 15 question marks and a fixed rack of 16 letters in two rows of eight. Every gap has a planted answer and the initial rack contains enough copies of every required letter, plus one spare. No red herrings, refills, adverts, analytics or paid services.
 
 ## Play
 
-Open the hosted game in Safari. Share → Add to Home Screen adds a standalone shortcut. The game needs a connection when opened. Sounds start after a tap, as required by mobile browsers. Mute is a device-local preference. Reloading starts a fresh session.
-
-Choose 10, 15 or 20 planted words. A change during play applies on the next board; changing an untouched board reshuffles it immediately. The clock measures active play, excluding instructions, time in the background and the completed-board screen.
+Open the hosted game in Safari. Share → Add to Home Screen adds a standalone shortcut. The game needs a connection when opened. Tap Start board to begin the countdown. Sound starts after a tap; mute is saved as a device-local preference. Reloading starts a new session.
 
 ## Rules
 
-- Fill the sparkling question mark using a rack letter to complete at least one word containing that square. Accept any dictionary word of 3–12 letters, left to right or top to bottom, embedded anywhere in the row or column. Other question marks break words.
-- PASS cycles through unresolved squares. It only records a missed opportunity if any current rack letter would complete a valid word. Misses are shown on the square when it returns, not immediately when passed.
-- A wrong letter remains in the rack and advances the active square. It records a miss only if a valid rack answer existed.
-- Green: 2 points with no missed opportunities. Amber: 1 point after one. Red: 0 points after two or more, still filling the square and replacing the letter.
-- One placement completing at least one horizontal and one vertical word earns gold and 5 points total, overriding missed-opportunity scoring. Multiple words in one direction retain the normal placement score.
-- Every successful placement replaces exactly one rack slot. Replacement draws mix needed letters with weighted random letters. There is no guarantee that every planted word will remain attainable.
-- Count each new word occurrence containing the filled square; existing words cannot repeatedly score. A word extension counts as a new word. All words involved remain highlighted.
-- A deliberate shared gap completes two crossing words on every board. A staged word pair, such as WALK then WALKING, has two gaps. Any further doubles can arise incidentally.
-- The board refreshes only when exhaustive checking finds no valid move in any remaining gap with the post-replacement rack. Genuine red herrings may remain. Passing alone cannot end a playable board.
+- Complete a dictionary word containing the active gap. Words may be embedded in surrounding letters, reading left to right or top to bottom, 3–12 letters long.
+- A correct answer consumes one rack tile. Its letter remains visible but faded and disabled. Used letters never refill. Automatic answers consume a tile too, showing it in red. Two choices remain for the final gap; one remains after the board is complete.
+- First opportunity: green, 2 points. After one miss: amber, 1 point. A second pass, timeout or incorrect choice fills the gap automatically in red, for zero points. Incorrect choices retain the wrongly selected tile; an automatic resolution instead consumes the actual answer.
+- Multiple word occurrences in **any direction** earn gold and 5 points total for that placement, including OTTER and ERA overlapping in one row. Automatic fills always score zero. Each word is revealed individually, shortest first, with its own board highlight, bounce and increasingly high magical chime. Reveals do not consume playing time.
+- Passing cycles unresolved gaps. Each gap has its own time allowance based on its initial position in the sequence. Allowances interpolate from 30 seconds for gap 1 to 15 seconds for gap 15: 30, 29, 28, 27, 26, 25, 24, 22, 21, 20, 19, 18, 17, 16, 15. Fifteen gaps have fourteen transitions, so one step decreases by two seconds. Revisits retain the same allowance with a fresh countdown.
+- The fixed rack is protected by an exact matching check. Unexpected valid words count when the remaining unused letters can still complete all unresolved gaps. A valid but blocking choice stays in the rack, does not move the active gap or add a miss, and explains why. This is an intentional change from the original unlimited-refill version. Automatic answers use a complete remaining assignment, so alternate valid words cannot strand the board.
+- A board ends only when all 15 gaps are filled. Results stay visible until Next board is pressed, then the old board explodes and a new one drops in.
+
+## Timing and score
+
+Only active thinking time counts towards the overall board time. The clock pauses during animation, instructions, results and while the page is hidden. A monotonic clock handles deadlines; timeouts use the same action as PASS.
+
+The initial allowances total 337 seconds. The board speed bonus is:
+
+`max(0, min(manuallySolvedGaps, floor((337 - activeSeconds) / 15)))`
+
+This awards one point per 15 seconds saved against the complete board budget, capped at the number of gaps the player solved themselves. Automatic fills do not independently earn a speed reward. The bonus is calculated and added once on completion. Results show word points, time, bonus and board score; the top score carries across boards.
 
 ## Source and running
 
-This folder contains the authored, deployable static game. Serve it through any ordinary static HTTP server. No build step or external runtime requests are needed, beyond loading the bundled assets. `engine.mjs` contains pure game rules, `app.mjs` handles presentation and sound, and `styles.css` contains the responsive layout and motion.
-
-Run the rule checks with Node:
+This folder contains the authored deployable static game. No build step is required. Serve that folder through any static HTTP server. `engine.mjs` contains rules and board generation, `clock.mjs` contains the active-time clock, and `app.mjs` handles the interface, input and sound.
 
 ```sh
 node --test tests/engine.test.mjs
@@ -32,12 +36,10 @@ node --test tests/engine.test.mjs
 
 ## Dictionary
 
-72,825 British English word forms, 3–12 ASCII letters. Reuses the original Letteramble SCOWL en_GB-ise 2020.12.07 dictionary via wooorm/dictionaries, filtered only by playable length. Original source repository revision: `2b8598af94ec941a88b637e6a05e04530fed904e` in thundercato/WordShape. No claim of an exhaustive English dictionary or official Scrabble list. Full redistribution notices are in `DICTIONARY-LICENCE.txt` and linked from the help panel.
-
-Planted words come from a hand-picked familiar vocabulary, validated against the same full dictionary. Additional valid words can make the discovered word count higher than the 10/15/20 planted target.
+72,825 British English word forms, 3–12 ASCII letters. Reuses the original Letteramble SCOWL en_GB-ise 2020.12.07 dictionary via wooorm/dictionaries, filtered only by playable length. Full redistribution notices are in `DICTIONARY-LICENCE.txt`, linked from the help panel. This is not an exhaustive English dictionary or an official Scrabble list.
 
 ## Validation
 
-14 automated rule checks pass. Coverage includes embedded and unexpected words, no backwards/wrapped/two-letter answers, fair passes and mistakes, gold overrides, zero-point refills, staged extensions, post-replacement exhaustion and red herrings. Generated-board checks cover 90 seeded boards across all three modes; 30 complete simulated games check scoring and termination.
+15 automated checks pass, including OTTER/ERA order and scoring, fixed-rack consumption, duplicate allocation, timeout/auto-fill behaviour, safe alternative words, pause/resume timing, bonus idempotence, 60 generated boards and 30 complete games mixing manual answers, passes and timeouts. HTML/script references, local assets, manifest and JavaScript syntax are checked.
 
-JavaScript syntax and local asset links are checked. No automated browser, visual or physical iPhone/Safari test has been performed. Responsive CSS reserves space for rack and PASS using the small viewport height, with a minimum readable board size and scrolling on very small screens. Reduced-motion preferences remove animation.
+The board now uses an explicit inset on all four sides rather than a percentage height; the bottom row cannot extend beyond its frame. Responsive sizing accounts for viewport height and safe areas and preserves a readable minimum size, with page scrolling where needed. No browser screenshot or physical iPhone verification has been performed for this revision.
