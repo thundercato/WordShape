@@ -42,3 +42,9 @@ Candidate placement search considers actual geometry, full perpendicular constra
 ## Tests actually run
 
 See `TESTING.md` and recorded logs in `tests/`. Real iPhone/Safari gesture and visual testing remains outstanding.
+
+## Agent workflow and storage
+
+Read [AGENTS.md](AGENTS.md) before work. Effective 7 September 2026, local packaging and tests remain the default. Do not introduce hosted builds, paid services or routine diagnostic uploads without explicit approval; newly approved optional diagnostic archives should expire after one day unless another duration is agreed.
+
+The existing Pages publishing route is preserved. Root `index.html`, `dist/` and dictionary/licence assets are intentional delivery files, not disposable Actions artefacts. Do not remove them, change the live address or disable publishing as housekeeping. This documentation update changes no game rules, code, tests or release version and claims no new device acceptance.
