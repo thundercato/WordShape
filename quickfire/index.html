@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="description" content="Spot the word. Fill the gap. A quick-thinking word game from Letteramble.">
   <title>Letteramble · Quickfire</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=3">
-  <link rel="icon" href="./icon.svg?v=3" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./icon-192.png?v=3">
-  <link rel="stylesheet" href="./styles.css?v=3">
+  <link rel="manifest" href="./manifest.webmanifest?v=4">
+  <link rel="icon" href="./icon.svg?v=4" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-192.png?v=4">
+  <link rel="stylesheet" href="./styles.css?v=4">
 </head>
 <body>
   <main class="game" id="game">
@@ -26,6 +26,8 @@
       <h1><span class="bolt" aria-hidden="true">ϟ</span> Quickfire</h1>
       <span class="round-tag" id="shape-name">15 GAPS · 16 LETTERS</span>
     </section>
+    <div class="daily-strip" id="daily-progress" aria-label="Daily missions"></div>
+    <div class="daily-meta"><span id="daily-streak">0 day streak</span><span id="save-status" role="status"></span></div>
     <section class="scoreboard" aria-label="Game statistics">
       <div><span class="stat-label">SCORE</span><strong id="score">0</strong></div>
       <div><span class="stat-label">FILLED</span><strong><span id="filled-count">0</span><small> / 15</small></strong></div>
@@ -54,6 +56,7 @@
     <h2 id="help-title">Spot it. Fill it. Keep going.</h2>
     <p>Find a word through the sparkling <b>?</b>, then tap a letter from your rack. Look <b>left to right</b> and <b>top to bottom</b>. Words need at least <b>3 letters</b>.</p>
     <div class="help-example" aria-label="H A P question mark Y"><span>H</span><span>A</span><span>P</span><span class="example-gap">?</span><span>Y</span></div>
+    <p>Three daily missions unlock in order: <b>shape, agent, shape</b>. On agent boards every word starts or ends with the agent’s letter. Each board earns a medal: <b>gold from 38 points, silver from 24, bronze below 24</b>, including the speed bonus. Finish all three to extend your Quickfire streak. Daily missions reset at midnight UK time. Progress is saved in this browser; separate site addresses and devices have separate saves.</p>
     <p>Every board has <b>15 solvable gaps</b> and <b>16 letters</b>, including the right quantities of repeated letters. Used letters fade out. There are no refills and no red herrings.</p>
     <p>You have <b>three passes</b> and <b>three hints per board</b>. A pass brings the gap back later for fewer points. A hint sparkles around roughly 30% of your unused rack tiles, including a correct answer. It lasts until you move on.</p>
     <ul class="help-scoring"><li><i class="green"></i><b>2 points</b> First opportunity</li><li><i class="amber"></i><b>1 point</b> After one missed opportunity</li><li><i class="red"></i><b>0 points</b> After two misses, or time runs out</li><li><i class="gold"></i><b>5 points</b> Complete a crossing pair</li></ul>
@@ -68,6 +71,6 @@
     <button class="primary-button" id="play-button">Let's play</button>
   </dialog>
   <noscript>This game needs JavaScript enabled to play.</noscript>
-  <script type="module" src="./app.mjs?v=3"></script>
+  <script type="module" src="./app.mjs?v=4"></script>
 </body>
 </html>

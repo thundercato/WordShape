@@ -1,6 +1,7 @@
-import {createRound,act,finishRound,SIZE,RACK_SIZE} from './engine.mjs?v=3';
-import {RoundClock} from './clock.mjs?v=3';
-import {CountdownCues,sparkDuration,vibrate} from './feedback.mjs?v=3';
+import {dayKey,dailyRound,medalFor,streak,recordCompletion,PROGRESS_KEY,SESSION_KEY,readSession,hash} from './daily.mjs?v=4';
+import {createRound,act,finishRound,SIZE,RACK_SIZE,seededRandom} from './engine.mjs?v=4';
+import {RoundClock} from './clock.mjs?v=4';
+import {CountdownCues,sparkDuration,vibrate} from './feedback.mjs?v=4';
 const cues=new CountdownCues();
 const $=id=>document.getElementById(id);
 const board=$('board'),rack=$('rack'),pass=$('pass-button'),hint=$('hint-button'),help=$('help-dialog'),feedback=$('feedback');
@@ -9,6 +10,21 @@ const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let dictionary,state,locked=true,started=false,generation=0,transitioning=false;
 let tiles=[],rackButtons=[],audioContext,muted=false,clock=new RoundClock(),pendingTimeout=false;
 try{muted=localStorage.getItem('letteramble-quickfire-muted')==='true';}catch{}
+let session,progress={schemaVersion:1,days:{}},storageFailed=false;
+const medals={gold:'🥇',silver:'🥈',bronze:'🥉'};
+function saveDaily(){
+ if(!session)return;
+ session.elapsedMs=clock.elapsedMs;session.remainingMs=clock.remainingMs;
+ try{localStorage.setItem(SESSION_KEY,JSON.stringify(session));const other=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}');for(const [day,games] of Object.entries(other.days||{}))progress.days[day]={...games,...progress.days[day]};localStorage.setItem(PROGRESS_KEY,JSON.stringify(progress));}catch{storageFailed=true;$('save-status').textContent='Progress cannot be saved in this browser.';}
+ renderDaily();
+}
+function renderDaily(){
+ if(!session)return;
+ const strip=$('daily-progress');strip.replaceChildren();
+ for(let i=0;i<3;i++){const item=document.createElement('span');item.textContent=`${session.results[i]?medals[session.results[i].medal]:i>session.results.length?'🔒':i===session.results.length?'●':'○'} ${i===1?'Agent':'Shape'}`;item.setAttribute('aria-label',`Board ${i+1}: ${session.results[i]?.medal|| (i>session.results.length?'locked':'current')}`);strip.append(item);}
+ $('daily-streak').textContent=`${streak(progress,'quickfire',session.day)} day streak`;
+}
+function dailyDone(){overlay.querySelector('.round-results')?.remove();setLocked(true);started=false;renderDaily();overlayMessage('Daily assignment complete!',session.results.map((r,i)=>`${medals[r.medal]} Board ${i+1}: ${r.total} points`).join(' · ')+' Come back tomorrow for three new missions.');}
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const fmt=ms=>{const s=Math.floor(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
 const icons={sound:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg>',mute:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="m16 9 5 6m0-6-5 6"/></svg>'};
@@ -72,7 +88,7 @@ function buildBoard(){
   board.setAttribute('aria-label',`${state.shape} word board, ${SIZE} rows and columns`);
   document.body.dataset.theme=state.theme;
   document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.body).getPropertyValue('--surface').trim();
-  $('shape-name').textContent=`${state.shape.length===1?'LETTER ':''}${state.shape.toUpperCase()} · BOARD ${state.round}`;
+  $('shape-name').textContent=`${state.agentLetter?'AGENT ':''}${state.shape.toUpperCase()} · BOARD ${state.round}`;
   $('word-outlines').setAttribute('viewBox',`0 0 ${SIZE} ${SIZE}`);
   for(let r=0;r<SIZE;r++){
     const row=document.createElement('div');row.className='board-row';row.setAttribute('role','row');row.setAttribute('aria-rowindex',r+1);
@@ -148,25 +164,30 @@ async function revealWords(event,token){
   if(multiple||automatic)await wait(450);
 }
 async function startPreparedRound(token){
-  if(token!==generation||transitioning)return;transitioning=true;unlockAudio();overlay.hidden=true;render({drop:true});sound('new');
+  if(token!==generation||transitioning)return;const resuming=!!session.started;session.started=true;transitioning=true;unlockAudio();overlay.hidden=true;render({drop:true});sound('new');
   await wait(reduced?100:850);if(token!==generation)return;
-  tiles.forEach(t=>t.classList.remove('bounce'));started=true;transitioning=false;resumeTurn();
+  tiles.forEach(t=>t.classList.remove('bounce'));started=true;transitioning=false;if(resuming){if(clock.remainingMs<=0){setLocked(false);await handle({type:'timeout'});}else resumeTurn(false);}else resumeTurn();
 }
 async function newRound({first=false}={}){
   const token=++generation;setLocked(true);started=false;clock=new RoundClock();transitioning=false;pendingTimeout=false;
   overlayMessage('Shuffling the letters…','Every gap has an answer in your rack.');
   try{
     await new Promise(resolve=>requestAnimationFrame(resolve));
-    state=createRound({dictionary,score:state?.score||0,totalWords:state?.totalWords||0,round:first?1:(state?.round||0)+1,previousShape:state?.shape,previousTheme:state?.theme});
+    if(session.results.length===3){dailyDone();return;}
+    state=dailyRound(dictionary,session.day,session.results.length);
+    const actions=session.actions;for(let i=0;i<actions.length;i++)act(state,actions[i],dictionary,seededRandom(hash(`${session.day}:${session.results.length}:${i}`)));
+    clock.elapsedMs=session.started?session.elapsedMs:0;clock.remainingMs=session.started?session.remainingMs:30000;
+    if(state.ended){buildBoard();render();completeRound(token);return;}
     if(token!==generation)return;
-    buildBoard();render();clock.remainingMs=30000;updateTimer();say('Find a word through the sparkling ?');
-    if(first)overlayMessage('Ready for Quickfire?','15 gaps. 16 letters. Three hints. Three passes.','Start board',()=>startPreparedRound(token));
-    else await startPreparedRound(token);
+    buildBoard();render();clock.remainingMs=session.started?session.remainingMs:30000;updateTimer();renderDaily();say(state.agentLetter?`Agent ${state.agentLetter}: words must start or end with ${state.agentLetter}.`:'Find a word through the sparkling ?');
+    overlayMessage(state.agentLetter?`Greetings, Agent ${state.agentLetter}.`:`Daily mission ${session.results.length+1} of 3`,state.agentLetter?`Every word begins or ends with ${state.agentLetter}, including both words at a crossing. Find all fifteen gaps.`:'15 gaps. 16 letters. Three hints. Three passes.',session.started?'Resume board':'Start board',()=>startPreparedRound(token));
   }catch(error){console.error(error);overlayMessage('Those letters got tangled.','Let’s shuffle another board.','Try again',()=>newRound({first}));}
 }
 function completeRound(token){
   setLocked(true);const summary=finishRound(state,clock.elapsedMs);render();
-  overlayMessage('Board complete!',`${summary.manualSolved} solved by you · ${summary.automaticSolved} shown`,'Next board',()=>transitionRound(token));
+  if(session.results.length<state.round){session.results.push({...summary,medal:medalFor(summary.total),shape:state.shape,agentLetter:state.agentLetter});session.actions=[];session.started=false;if(session.results.length===3)recordCompletion(progress,'quickfire',session.day,{medals:session.results.map(r=>r.medal),score:session.results.reduce((n,r)=>n+r.total,0)});saveDaily();}
+  const medal=medalFor(summary.total);
+  overlayMessage(`${medals[medal]} ${medal[0].toUpperCase()+medal.slice(1)} medal`,`${summary.manualSolved} solved by you · ${summary.automaticSolved} shown`,session.results.length===3?'Daily results':'Next mission',()=>session.results.length===3?dailyDone():transitionRound(token));
   overlay.classList.add('results-view');
   const results=document.createElement('div');results.className='round-results';
   for(const [label,value] of [['Word points',summary.wordPoints],['Your time',fmt(summary.elapsedMs)],['Speed bonus',`+${summary.bonus}`],['Board score',summary.total]]){
@@ -180,14 +201,14 @@ async function transitionRound(token){
   if(token!==generation||transitioning)return;transitioning=true;overlay.hidden=true;overlay.querySelector('.round-results')?.remove();
   $('board-wrap').classList.add('is-exploding');board.classList.add('exploding');sound('pass');
   await wait(reduced?100:650);
-  $('board-wrap').classList.remove('is-exploding');if(token===generation)await newRound();
+  $('board-wrap').classList.remove('is-exploding');session.elapsedMs=0;session.remainingMs=30000;clock=new RoundClock();clock.remainingMs=30000;saveDaily();if(token===generation)await newRound();
 }
 async function handle(action){
   if(locked||help.open||document.hidden||!started||!state||state.ended)return;
   const expired=clock.pause(performance.now());if(expired)action={type:'timeout'};
   unlockAudio();setLocked(true);const token=generation;
   let event;
-  try{event=act(state,action,dictionary);}catch(error){console.error(error);overlayMessage('Something interrupted this board.','Try a fresh set of letters.','New board',()=>newRound());return;}
+  try{event=act(state,action,dictionary,seededRandom(hash(`${session.day}:${session.results.length}:${session.actions.length}`)));if(event.kind!=='ignored'){session.actions.push(action);saveDaily();}}catch(error){console.error(error);overlayMessage('Something interrupted this board.','Try a fresh set of letters.','New board',()=>newRound());return;}
   if(event.kind==='ignored'){resumeTurn(false);return;}
   if(event.kind==='hint'){render();say(`${event.slots.length} sparkling choices. One will fit.`);resumeTurn(false);return;}
   if(event.kind==='reserved'){
@@ -203,7 +224,7 @@ async function handle(action){
     if(event.kind==='automatic'){vibrate(navigator,220);sound('wrong');}else vibrate(navigator,[35,45,70]);render();await revealWords(event,token);
   }
   if(token!==generation)return;
-  if(state.ended)completeRound(token);else resumeTurn();
+  if(state.ended)completeRound(token);else {resumeTurn();saveDaily();}
 }
 async function load(){
   overlayMessage('Getting the letters ready…','15 solvable gaps. No red herrings.');
@@ -212,6 +233,9 @@ async function load(){
     const response=await fetch(new URL('./words.txt',import.meta.url),{signal:controller.signal});if(!response.ok)throw new Error('Dictionary could not be loaded.');
     const text=await response.text();dictionary=new Set(text.split(/\s+/).filter(w=>/^[A-Z]{3,12}$/.test(w)));
     if(dictionary.size<50000||!dictionary.has('HAPPY'))throw new Error('Incomplete dictionary.');
+    const day=dayKey();
+    try{const saved=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'{}');if(saved.schemaVersion===1&&saved.days&&typeof saved.days==='object')progress=saved;session=readSession(localStorage.getItem(SESSION_KEY),day);}catch{storageFailed=true;}
+    session??={version:1,day,results:[],actions:[],elapsedMs:0,remainingMs:30000};
     await newRound({first:true});
   }catch(error){console.error(error);overlayMessage('The dictionary hasn’t arrived.','Check your connection, then try again.','Retry',load);}finally{clearTimeout(timeout);}
 }
@@ -236,11 +260,13 @@ document.addEventListener('keydown',e=>{
   }else if(/^[a-z]$/i.test(e.key)&&state){const slot=state.rack.findIndex((letter,i)=>letter===e.key.toUpperCase()&&!state.rackUsed[i]);if(slot!==-1){e.preventDefault();handle({type:'letter',slot});}}
 });
 document.addEventListener('pointerdown',unlockAudio,{passive:true});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){vibrate(navigator,0);pendingTimeout=clock.pause(performance.now())||pendingTimeout;}else resumeVisible();updateTimer();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){vibrate(navigator,0);pendingTimeout=clock.pause(performance.now())||pendingTimeout;}else resumeVisible();updateTimer();saveDaily();});
 setInterval(()=>{
   if(!clock.running||help.open||document.hidden)return;
   const expired=clock.tick(performance.now());updateTimer();
   if(!expired&&cues.sample(clock.remainingMs)){vibrate(navigator,30);sound('warning');}
   if(expired)handle({type:'timeout'});
 },50);
+window.addEventListener('pagehide',()=>{clock.pause(performance.now());saveDaily();});
+let lastSaved=0;setInterval(()=>{if(started&&!locked&&performance.now()-lastSaved>1000){lastSaved=performance.now();saveDaily();}if(session&&session.day!==dayKey()&&(!started||state?.ended))load();},1000);
 soundButton();buildRack();load();
